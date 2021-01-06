@@ -1,0 +1,5 @@
+#+TITLE: chess
+
+Some tools for chess.
+
+Initially created to ease bulk import to lichess.
