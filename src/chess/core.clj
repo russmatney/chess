@@ -1,6 +1,7 @@
 (ns chess.core
   (:require
    [clojure.string :as string]
+   [cheshire.core :as json]
    [clj-http.client :as client]))
 
 (defonce lichess-username (atom nil))
@@ -98,8 +99,19 @@
 
   (->> res
        (map :status)
-       (into #{})
+       (into #{}))
+
+  ;; format for import into study (one-url-per-line)
+  ;; studies have a 64 chapter limit, but i'm just cutting to 50 for now
+  (->> res
+       ;; (take 50)
+       (drop 50)
+       (map :body)
+       (map json/parse-string)
+       (map #(get % "url"))
+       (string/join "\n")
+       (println)
+       ;; and copy from repl...
+       ;; TODO ought to just put it on my clipboard!
        )
-
-
   )
