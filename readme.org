@@ -3,3 +3,11 @@
 Some tools for chess.
 
 Initially created to ease bulk import to lichess.
+
+Garden doc: [[file:../../Dropbox/todo/garden/russmatney_chess.org][russmatney/chess]]
+
+* resources/config.edn
+#+begin_src clojure
+{:lichess/username "<your username>"
+ :lichess/token "<your lichess user token>"}
+#+end_src

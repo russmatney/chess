@@ -2,10 +2,27 @@
   (:require
    [clojure.string :as string]
    [cheshire.core :as json]
-   [clj-http.client :as client]))
+   [clj-http.client :as client]
+   [systemic.core :as sys :refer [defsys]]
+   [aero.core :as aero]
+   [clojure.java.io :as io]
+   ))
 
 (defonce lichess-username (atom nil))
 (defonce lichess-token (atom nil))
+
+(defn ->config [] (aero/read-config (io/resource "config.edn")) )
+
+(defsys *lichess-env*
+  :start
+  (let [{:lichess/keys [username token]} (->config)]
+    {:lichess/username username
+     :lichess/token    token}))
+
+
+(comment
+  (sys/start! '*lichess-env*)
+  )
 
 (comment
   (reset! lichess-username "russmatney")
@@ -20,9 +37,6 @@
                                     "/activity"))
 (def lichess-api-puzzle-activity (str lichess-api-user
                                       "/puzzle-activity?max=5"))
-(def lichess-api-games-user (str lichess-api-base "/games/user/"
-                                 @lichess-username
-                                 "?max=3&pgnInJson=true&opening=true"))
 
 (comment
   (def --acct
@@ -31,27 +45,82 @@
       {:headers {:authorization (str "Bearer " @lichess-token)}
        :as      :json}))
 
-  ;; (def --puzzle-activity
-  ;;   (client/get
-  ;;     lichess-api-puzzle-activity
-  ;;     {:headers {:authorization (str "Bearer " @lichess-token)}
-  ;;      :as      :json}))
-
   (def --account-current-games
     (client/get lichess-api-account-playing
                 {:headers {:authorization (str "Bearer " @lichess-token)}
                  :as      :json}))
 
-  (def --user-games
-    (client/get lichess-api-games-user
-                {:headers
-                 {:accept        "application/json"
-                  :authorization (str "Bearer " @lichess-token)}}))
 
   (def --user-activity-json
     (client/get lichess-api-user-activity
                 {:headers {:authorization (str "Bearer " @lichess-token)}
                  :as      :json})))
+
+(defn lichess-request
+  "Makes a request to lichess.
+  Starts the *lichess-env* to ensure username/token are available.
+
+  TODO check status and handle errors"
+  [req-str]
+  (println "Requesting from lichess!" req-str)
+  ;; (sys/start! '*lichess-env*)
+  (->> (client/get
+         req-str
+         {:headers {:accept        "application/x-ndjson"
+                    :authorization (str "Bearer "
+                                        (:lichess/token *lichess-env*))}})
+       :body))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Fetch lichess games
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn parse-game [gm]
+  (let [{:keys [pgn id players opening]} gm]
+    (-> gm
+        (assoc :lichess/id id
+               :lichess/url (str "https://lichess.org/" id)
+               :white-user (-> players :white :user :id)
+               :black-user (-> players :black :user :id)))))
+
+(defonce *fetch-games-cache (atom nil))
+
+(defn fetch-games
+  ([]
+   (fetch-games nil))
+  ([{:keys [username max opening evals analysis]}]
+   (println "Fetching lichess games")
+   ;; (sys/start! '*lichess-env*)
+   (let [max      (or max 5)
+         username (or username (:lichess/username *lichess-env*))
+         endpoint+params
+         (str lichess-api-base "/games/user/" username
+              "?pgnInJson=true"
+              "&max=" max
+              (when opening "&opening=true")
+              (when evals "&evals=true")
+              (when analysis "&analysis=true"))]
+
+     (->
+       (or @*fetch-games-cache (lichess-request endpoint+params))
+       ((fn [res]
+          (reset! *fetch-games-cache res)
+          res))
+       (string/split #"\n")
+       (->>
+         (map (fn [raw-game]
+                (-> raw-game
+                    (json/parse-string true)
+                    parse-game))))))))
+
+(comment
+  (def --user-games
+    (fetch-games {:opening  true
+                  :evals    true
+                  :analysis true}))
+
+  (fetch-games)
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Lichess Import
