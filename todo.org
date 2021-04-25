@@ -1,8 +1,9 @@
 #+TITLE: Todo
 
-* [ ] list games from lichess
+* [X] list games from lichess
+CLOSED: [2021-03-20 Sat 19:46]
 :LOGBOOK:
-CLOCK: [2021-03-20 Sat 17:23]
+CLOCK: [2021-03-20 Sat 17:23]--[2021-03-20 Sat 19:46] =>  2:23
 :END:
 * [ ] list games from chess.com
 * [ ] list merged studies for game

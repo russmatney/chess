@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as string]
    [cheshire.core :as json]
-   [clj-http.client :as client]
+   [babashka.curl :as curl]
    [systemic.core :as sys :refer [defsys]]
    [aero.core :as aero]
    [clojure.java.io :as io]
@@ -18,7 +18,6 @@
   (let [{:lichess/keys [username token]} (->config)]
     {:lichess/username username
      :lichess/token    token}))
-
 
 (comment
   (sys/start! '*lichess-env*)
@@ -40,19 +39,19 @@
 
 (comment
   (def --acct
-    (client/get
+    (curl/get
       lichess-api-account
       {:headers {:authorization (str "Bearer " @lichess-token)}
        :as      :json}))
 
   (def --account-current-games
-    (client/get lichess-api-account-playing
+    (curl/get lichess-api-account-playing
                 {:headers {:authorization (str "Bearer " @lichess-token)}
                  :as      :json}))
 
 
   (def --user-activity-json
-    (client/get lichess-api-user-activity
+    (curl/get lichess-api-user-activity
                 {:headers {:authorization (str "Bearer " @lichess-token)}
                  :as      :json})))
 
@@ -64,7 +63,7 @@
   [req-str]
   (println "Requesting from lichess!" req-str)
   ;; (sys/start! '*lichess-env*)
-  (->> (client/get
+  (->> (curl/get
          req-str
          {:headers {:accept        "application/x-ndjson"
                     :authorization (str "Bearer "
@@ -90,7 +89,8 @@
    (fetch-games nil))
   ([{:keys [username max opening evals analysis]}]
    (println "Fetching lichess games")
-   ;; (sys/start! '*lichess-env*)
+   (when-not (sys/running? `*lichess-env*)
+     (sys/start! `*lichess-env*))
    (let [max      (or max 5)
          username (or username (:lichess/username *lichess-env*))
          endpoint+params
@@ -147,7 +147,7 @@
   (def some-pgn
     (-> bulk-pgns first))
 
-  (client/post
+  (curl/post
     lichess-api-import
     {:headers     {:authorization (str "Bearer " @lichess-token)
                    :accept        "application/x-www-form-urlencoded"}
@@ -158,7 +158,7 @@
     (->> bulk-pgns
          (map
            (fn [pgn]
-             (client/post
+             (curl/post
                lichess-api-import
                {:headers     {:authorization (str "Bearer " @lichess-token)
                               :accept        "application/x-www-form-urlencoded"}
