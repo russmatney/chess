@@ -1,6 +1,14 @@
 #+TITLE: chess
 
-Some tools for chess.
+* Deprecated
+
+This repository's code has been completely consumed in [[https://github.com/russmatney/clawe][russmatney/clawe]], where
+it has evolved along with that monorepo.
+
+The latest now supports downloading games from lichess [[https://github.com/russmatney/clawe/blob/db7042b02ba8ed9f8dc35f98c901a8ff5d07953b/src/chess/db.clj][into a datascript db]] and
+[[https://github.com/russmatney/clawe/blob/db7042b02ba8ed9f8dc35f98c901a8ff5d07953b/src/components/chess.cljs][components for rendering games via chessground]].
+
+* Some tools for chess.
 
 Initially created to ease bulk import to lichess.
 
